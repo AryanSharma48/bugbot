@@ -118,7 +118,9 @@ export async function GET() {
       .map((i: any) => {
         const names: string[] = (i.labels || []).map((l: any) => l.name);
 
-        const status: IssueItem['status'] = names.includes('fix-failed')
+        const prData = prByIssue[String(i.number)];
+
+        let status: IssueItem['status'] = names.includes('fix-failed')
           ? 'fix-failed'
           : names.includes('needs-review')
           ? 'needs-review'
@@ -129,7 +131,10 @@ export async function GET() {
         const sevLabel = names.find((n) => n.startsWith('sev:'));
         const compLabel = names.find((n) => n.startsWith('comp:'));
 
-        const prData = prByIssue[String(i.number)];
+        // If a PR is already open on GitHub for this issue, it is ready for human review
+        if (prData && status !== 'fix-failed') {
+          status = 'needs-review';
+        }
 
         return {
           number: i.number,
