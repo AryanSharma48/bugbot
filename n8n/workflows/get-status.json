@@ -30,15 +30,14 @@
             }
           ]
         },
-        "options": {
-          "continueOnFail": true
-        }
+        "options": {}
       },
       "id": "github-get-issue-status",
       "name": "GitHub: Get Issue",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [380, 300],
+      "continueOnFail": true,
       "credentials": {
         "httpHeaderAuth": {
           "id": "Pd0fYsrmOaQWT06z",
@@ -61,16 +60,14 @@
             }
           ]
         },
-        "options": {
-          "continueOnFail": true,
-          "alwaysOutputData": true
-        }
+        "options": {}
       },
       "id": "github-get-pulls",
       "name": "GitHub: Get Pull Requests",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [600, 300],
+      "continueOnFail": true,
       "credentials": {
         "httpHeaderAuth": {
           "id": "Pd0fYsrmOaQWT06z",
@@ -93,16 +90,14 @@
             }
           ]
         },
-        "options": {
-          "continueOnFail": true,
-          "alwaysOutputData": true
-        }
+        "options": {}
       },
       "id": "github-get-runs",
       "name": "GitHub: Get Workflow Runs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [820, 300],
+      "continueOnFail": true,
       "credentials": {
         "httpHeaderAuth": {
           "id": "Pd0fYsrmOaQWT06z",
@@ -122,8 +117,25 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.has_active_run }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-run-active",
+      "name": "Is Run Active?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1260, 300]
+    },
+    {
+      "parameters": {
         "method": "GET",
-        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/actions/runs/{{ $json.run_id }}/jobs",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/actions/runs/{{ $('Filter Active Run').first().json.run_id }}/jobs",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -135,16 +147,14 @@
             }
           ]
         },
-        "options": {
-          "continueOnFail": true,
-          "alwaysOutputData": true
-        }
+        "options": {}
       },
       "id": "github-get-run-jobs",
       "name": "GitHub: Get Run Jobs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1260, 300],
+      "position": [1480, 220],
+      "continueOnFail": true,
       "credentials": {
         "httpHeaderAuth": {
           "id": "Pd0fYsrmOaQWT06z",
@@ -154,13 +164,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const req = $('Webhook: get-status').first().json.body || {};\nconst issue = $('GitHub: Get Issue').first().json;\nconst n = req.issue_number;\n\nif (!issue || issue.message === 'Not Found') {\n  return [{\n    json: {\n      ok: false,\n      error: 'issue_not_found',\n      spoken: `I could not find issue ${n}.`\n    }\n  }];\n}\n\nconst labels = (issue.labels || []).map(l => l.name);\nconst status = labels.includes('fix-failed') ? 'fix-failed'\n  : labels.includes('needs-review') ? 'needs-review'\n  : labels.includes('WIP') ? 'WIP' : 'reported';\n\nconst allPulls = $('GitHub: Get Pull Requests').all().map(p => p.json).filter(p => p && p.number);\nconst matchingPull = allPulls.find(p => (p.head && p.head.ref === `fix/issue-${n}`));\nconst pr_url = matchingPull ? matchingPull.html_url : null;\nconst pr_number = matchingPull ? matchingPull.number : null;\n\n// Inspect Swarm active step / agent\nlet activeAgent = null;\nlet swarmDetails = null;\n\ntry {\n  const jobsData = $('GitHub: Get Run Jobs').first().json;\n  if (jobsData && jobsData.jobs && jobsData.jobs.length > 0) {\n    const steps = jobsData.jobs[0].steps || [];\n    const inProgressStep = steps.find(s => s.status === 'in_progress');\n    if (inProgressStep) {\n      const sName = inProgressStep.name || '';\n      if (sName.includes('Investigator')) {\n        activeAgent = 'Investigator';\n      } else if (sName.includes('Reproducer')) {\n        activeAgent = 'Reproducer';\n      } else if (sName.includes('Coder')) {\n        activeAgent = 'Coder';\n      } else if (sName.includes('QA Reviewer') || sName.includes('Reviewer')) {\n        activeAgent = 'QA Reviewer';\n      } else {\n        activeAgent = 'Environment Setup';\n      }\n      swarmDetails = {\n        agent: activeAgent,\n        step: inProgressStep.name\n      };\n    }\n  }\n} catch (e) {}\n\nlet spoken = '';\nif (status === 'reported') {\n  spoken = `Issue ${n} is filed but the fix has not started yet. Say fix issue ${n} to begin.`;\n} else if (status === 'WIP') {\n  if (activeAgent === 'Investigator') {\n    spoken = `Issue ${n} is currently being analyzed by the Investigator Agent to find the root cause.`;\n  } else if (activeAgent === 'Reproducer') {\n    spoken = `The Reproducer Agent is writing a test to isolate and prove the bug on issue ${n}.`;\n  } else if (activeAgent === 'Coder') {\n    spoken = `The Coder Agent is currently modifying the files and running tests for issue ${n}.`;\n  } else if (activeAgent === 'QA Reviewer') {\n    spoken = `The QA Reviewer Agent is running full monorepo regressions and opening the pull request for issue ${n}.`;\n  } else {\n    spoken = `Issue ${n} is actively running in the swarm sandbox. You can check back shortly.`;\n  }\n} else if (status === 'needs-review') {\n  spoken = pr_number\n    ? `Issue ${n} has a fix ready for review. Pull request number ${pr_number} is open.`\n    : `Issue ${n} has a fix ready for human review.`;\n} else if (status === 'fix-failed') {\n  spoken = `The last automated fix attempt for issue ${n} failed. Say fix issue ${n} to retry.`;\n}\n\nreturn [{\n  json: {\n    ok: true,\n    issue_number: n,\n    status,\n    active_agent: activeAgent,\n    swarm: swarmDetails,\n    pr_url,\n    pr_number,\n    spoken\n  }\n}];"
+        "jsCode": "const req = $('Webhook: get-status').first().json.body || {};\nconst issue = $('GitHub: Get Issue').first().json;\nconst n = req.issue_number;\n\nif (!issue || issue.message === 'Not Found') {\n  return [{\n    json: {\n      ok: false,\n      error: 'issue_not_found',\n      spoken: `I could not find issue ${n}.`\n    }\n  }];\n}\n\nconst labels = (issue.labels || []).map(l => l.name);\nconst status = labels.includes('fix-failed') ? 'fix-failed'\n  : labels.includes('needs-review') ? 'needs-review'\n  : labels.includes('WIP') ? 'WIP' : 'reported';\n\nconst allPulls = $('GitHub: Get Pull Requests').all().map(p => p.json).filter(p => p && p.number);\nconst matchingPull = allPulls.find(p => (p.head && p.head.ref === `fix/issue-${n}`));\nconst pr_url = matchingPull ? matchingPull.html_url : null;\nconst pr_number = matchingPull ? matchingPull.number : null;\n\n// Inspect Swarm active step / agent\nlet activeAgent = null;\nlet swarmDetails = null;\n\ntry {\n  const jobsData = $('GitHub: Get Run Jobs').first().json;\n  if (jobsData && jobsData.jobs && jobsData.jobs.length > 0) {\n    const steps = jobsData.jobs[0].steps || [];\n    const inProgressStep = steps.find(s => s.status === 'in_progress');\n    if (inProgressStep) {\n      const sName = inProgressStep.name || '';\n      if (sName.includes('Investigator')) {\n        activeAgent = 'Investigator';\n      } else if (sName.includes('Reproducer')) {\n        activeAgent = 'Reproducer';\n      } else if (sName.includes('Coder')) {\n        activeAgent = 'Coder';\n      } else if (sName.includes('QA Reviewer') || sName.includes('Reviewer')) {\n        activeAgent = 'QA Reviewer';\n      } else {\n        activeAgent = 'Environment Setup';\n      }\n      swarmDetails = {\n        agent: activeAgent,\n        step: inProgressStep.name\n      };\n    }\n  }\n} catch (e) {}\n\nlet spoken = '';\nif (status === 'reported') {\n  spoken = `Issue ${n} is filed but the fix has not started yet. Say fix issue ${n} to begin.`;\n} else if (status === 'WIP') {\n  if (activeAgent === 'Investigator') {\n    spoken = `Issue ${n} is currently being analyzed by the Investigator Agent to find the root cause.`;\n  } else if (activeAgent === 'Reproducer') {\n    spoken = `The Reproducer Agent is writing a test to isolate and prove the bug on issue ${n}.`;\n  } else if (activeAgent === 'Coder') {\n    spoken = `The Coder Agent is currently modifying the files and running tests for issue ${n}.`;\n  } else if (activeAgent === 'QA Reviewer') {\n    spoken = `The QA Reviewer Agent is running full monorepo regressions and opening the pull request for issue ${n}.`;\n  } else {\n    spoken = `Issue ${n} is actively being processed by the swarm.`;\n  }\n} else if (status === 'needs-review') {\n  spoken = pr_number\n    ? `Issue ${n} has a fix ready for review. Pull request number ${pr_number} is open.`\n    : `Issue ${n} has a fix ready for human review.`;\n} else if (status === 'fix-failed') {\n  spoken = `The last automated fix attempt for issue ${n} failed. Say fix issue ${n} to retry.`;\n}\n\nreturn [{\n  json: {\n    ok: true,\n    issue_number: n,\n    status,\n    active_agent: activeAgent,\n    swarm: swarmDetails,\n    pr_url,\n    pr_number,\n    spoken\n  }\n}];"
       },
       "id": "code-build-status-response",
       "name": "Format Status & Spoken",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1480, 300]
+      "position": [1700, 300]
     },
     {
       "parameters": {
@@ -172,7 +182,7 @@
       "name": "Respond: Issue Status",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1700, 300]
+      "position": [1920, 300]
     }
   ],
   "connections": {
@@ -224,7 +234,25 @@
       "main": [
         [
           {
+            "node": "Is Run Active?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Run Active?": {
+      "main": [
+        [
+          {
             "node": "GitHub: Get Run Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Status & Spoken",
             "type": "main",
             "index": 0
           }
