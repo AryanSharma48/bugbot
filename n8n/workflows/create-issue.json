@@ -88,7 +88,13 @@
       "name": "GitHub: Append Comment",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [820, 160]
+      "position": [820, 160],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Pd0fYsrmOaQWT06z",
+          "name": "github-token"
+        }
+      }
     },
     {
       "parameters": {
@@ -105,7 +111,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://api.github.com/repos/aryanSharma48/smoothapi/issues?state=open&per_page=30",
+        "url": "https://api.github.com/repos/aryanSharma48/smoothapi/issues?state=all&per_page=50",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -122,14 +128,20 @@
         }
       },
       "id": "github-get-open-issues",
-      "name": "GitHub: Get Open Issues",
+      "name": "GitHub: Get All Issues",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [820, 340]
+      "position": [820, 340],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Pd0fYsrmOaQWT06z",
+          "name": "github-token"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const b = $('Webhook: create-issue').first().json.body || {};\nconst openIssues = $input.all().map(i => i.json).filter(i => i && i.number && !i.pull_request);\n\n// Check duplicate based on title similarity / token matching\nlet duplicate = null;\nif (!b.force_create && b.title) {\n  const words = b.title.toLowerCase().split(/\\s+/).filter(w => w.length > 3);\n  for (const existing of openIssues) {\n    const exTitle = (existing.title || '').toLowerCase();\n    const matchCount = words.filter(w => exTitle.includes(w)).length;\n    if (matchCount >= 2 || (words.length === 1 && exTitle.includes(words[0]))) {\n      duplicate = { number: existing.number, title: existing.title };\n      break;\n    }\n  }\n}\n\n// Determine severity & component\nconst validSevs = ['low', 'medium', 'high', 'critical'];\nconst sev = validSevs.includes(b.severity_hint) ? b.severity_hint : 'medium';\n\nconst validComps = ['typescript', 'python', 'docs', 'frontend', 'api', 'database'];\nconst comp = validComps.includes(b.component_hint) ? b.component_hint : 'typescript';\n\nconst body = [\n  '## Description', b.description || 'No description provided',\n  '## Steps to reproduce', b.steps_to_reproduce || '_not provided_',\n  '## Environment', b.environment || '_not provided_',\n  '---',\n  '_Filed automatically by VoiceBugBot_'\n].join('\\n\\n');\n\nreturn [{\n  json: {\n    duplicate,\n    title: b.title,\n    body,\n    sev,\n    comp,\n    labels: ['reported', `sev:${sev}`, `comp:${comp}`]\n  }\n}];"
+        "jsCode": "const b = $('Webhook: create-issue').first().json.body || {};\nconst allIssues = $input.all().map(i => i.json).filter(i => i && i.number && !i.pull_request);\n\nconst openIssues = allIssues.filter(i => i.state === 'open');\nconst closedIssues = allIssues.filter(i => i.state === 'closed');\n\n// Check duplicate based on title similarity in OPEN issues\nlet duplicate = null;\nconst words = (b.title || '').toLowerCase().split(/\\s+/).filter(w => w.length > 3);\n\nif (!b.force_create && words.length > 0) {\n  for (const existing of openIssues) {\n    const exTitle = (existing.title || '').toLowerCase();\n    const matchCount = words.filter(w => exTitle.includes(w)).length;\n    if (matchCount >= 2 || (words.length === 1 && exTitle.includes(words[0]))) {\n      duplicate = { number: existing.number, title: existing.title };\n      break;\n    }\n  }\n}\n\n// Find historical similar resolved (CLOSED) issues\nlet historicalMatches = [];\nif (words.length > 0) {\n  for (const past of closedIssues) {\n    const pastTitle = (past.title || '').toLowerCase();\n    const matchCount = words.filter(w => pastTitle.includes(w)).length;\n    if (matchCount >= 2 || (words.length === 1 && pastTitle.includes(words[0]))) {\n      historicalMatches.push({\n        number: past.number,\n        title: past.title,\n        url: past.html_url\n      });\n      if (historicalMatches.length >= 2) break;\n    }\n  }\n}\n\n// Determine severity & component\nconst validSevs = ['low', 'medium', 'high', 'critical'];\nconst sev = validSevs.includes(b.severity_hint) ? b.severity_hint : 'medium';\n\nconst validComps = ['typescript', 'python', 'docs', 'frontend', 'api', 'database'];\nlet comp = validComps.includes(b.component_hint) ? b.component_hint : null;\n\nif (!comp) {\n  const text = ((b.title || '') + ' ' + (b.description || '')).toLowerCase();\n  if (text.includes('py') || text.includes('python') || text.includes('pytest') || text.includes('fastapi')) {\n    comp = 'python';\n  } else if (text.includes('ts') || text.includes('typescript') || text.includes('node') || text.includes('npm')) {\n    comp = 'typescript';\n  } else if (text.includes('doc') || text.includes('readme')) {\n    comp = 'docs';\n  } else {\n    comp = 'typescript';\n  }\n}\n\nlet compPath = '';\nif (comp === 'python') {\n  compPath = 'packages/smooth-api-py';\n} else if (comp === 'typescript') {\n  compPath = 'packages/smooth-api-ts';\n}\n\nconst baseBody = [\n  '## Description', b.description || 'No description provided',\n  '## Steps to reproduce', b.steps_to_reproduce || '_not provided_',\n  '## Environment', b.environment || '_not provided_'\n].join('\\n\\n');\n\nreturn [{\n  json: {\n    duplicate,\n    historical_matches: historicalMatches,\n    title: b.title,\n    baseBody,\n    sev,\n    comp,\n    compPath,\n    labels: ['reported', `sev:${sev}`, `comp:${comp}`]\n  }\n}];"
       },
       "id": "code-triage",
       "name": "Triage & Check Duplicate",
@@ -168,6 +180,48 @@
     },
     {
       "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/commits?per_page=3{{ $('Triage & Check Duplicate').first().json.compPath ? '&path=' + $('Triage & Check Duplicate').first().json.compPath : '' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {
+          "alwaysOutputData": true,
+          "continueOnFail": true
+        }
+      },
+      "id": "github-get-commits",
+      "name": "GitHub: Get Recent Commits",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1460, 420],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Pd0fYsrmOaQWT06z",
+          "name": "github-token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const triage = $('Triage & Check Duplicate').first().json;\nconst items = $input.all();\n\nlet commitLines = [];\nlet recentCommits = [];\n\nfor (const item of items) {\n  const c = item.json;\n  if (c && c.sha && c.commit) {\n    const shortSha = c.sha.substring(0, 7);\n    const author = (c.commit.author && c.commit.author.name) || (c.author && c.author.login) || 'unknown';\n    const firstLine = (c.commit.message || '').split('\\n')[0].trim();\n    const url = c.html_url || `https://github.com/aryanSharma48/smoothapi/commit/${c.sha}`;\n    commitLines.push(`- [\\`${shortSha}\\`](${url}) - **${firstLine}** (by @${author})`);\n    recentCommits.push({ sha: shortSha, author, message: firstLine });\n  }\n}\n\nlet commitSection = '';\nif (commitLines.length > 0) {\n  const pathLabel = triage.compPath ? ` in \\`${triage.compPath}\\`` : '';\n  commitSection = `\\n\\n## 🔍 Recent Changes & Suspect Commits${pathLabel}\\n` + commitLines.join('\\n');\n}\n\nlet historySection = '';\nif (triage.historical_matches && triage.historical_matches.length > 0) {\n  const historyLines = triage.historical_matches.map(h => `- [#${h.number}](${h.url}) - **${h.title}** (Resolved/Closed)`);\n  historySection = '\\n\\n## 📜 Historical Precedents & Related Past Issues\\n' + historyLines.join('\\n');\n}\n\nconst finalBody = triage.baseBody + commitSection + historySection + '\\n\\n---\\n_Filed automatically by VoiceBugBot_';\n\nreturn [{\n  json: {\n    title: triage.title,\n    body: finalBody,\n    labels: triage.labels,\n    sev: triage.sev,\n    comp: triage.comp,\n    has_commits: commitLines.length > 0,\n    recent_commits: recentCommits,\n    historical_matches: triage.historical_matches || []\n  }\n}];"
+      },
+      "id": "code-assemble-issue",
+      "name": "Format Commits & Assemble Issue Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 420]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.github.com/repos/aryanSharma48/smoothapi/issues",
         "authentication": "genericCredentialType",
@@ -183,26 +237,32 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ title: $('Triage & Check Duplicate').first().json.title, body: $('Triage & Check Duplicate').first().json.body, labels: $('Triage & Check Duplicate').first().json.labels }) }}",
+        "jsonBody": "={{ JSON.stringify({ title: $('Format Commits & Assemble Issue Body').first().json.title, body: $('Format Commits & Assemble Issue Body').first().json.body, labels: $('Format Commits & Assemble Issue Body').first().json.labels }) }}",
         "options": {}
       },
       "id": "github-create-issue",
       "name": "GitHub: Create Issue",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1460, 420]
+      "position": [1900, 420],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Pd0fYsrmOaQWT06z",
+          "name": "github-token"
+        }
+      }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({\n  ok: true,\n  created: true,\n  number: $json.number,\n  url: $json.html_url,\n  labels: $('Triage & Check Duplicate').first().json.labels,\n  spoken: 'Filed issue ' + $json.number + ', ' + $('Triage & Check Duplicate').first().json.sev + ' severity, ' + $('Triage & Check Duplicate').first().json.comp + '. Want me to start a fix?'\n}) }}",
+        "responseBody": "={{ JSON.stringify({\n  ok: true,\n  created: true,\n  number: $json.number,\n  url: $json.html_url,\n  labels: $('Format Commits & Assemble Issue Body').first().json.labels,\n  spoken: 'Filed issue ' + $json.number + ', ' + $('Format Commits & Assemble Issue Body').first().json.sev + ' severity, ' + $('Format Commits & Assemble Issue Body').first().json.comp + ($('Format Commits & Assemble Issue Body').first().json.historical_matches && $('Format Commits & Assemble Issue Body').first().json.historical_matches.length > 0 ? '. Note: a similar issue #' + $('Format Commits & Assemble Issue Body').first().json.historical_matches[0].number + ' was resolved in the past.' : '') + ($('Format Commits & Assemble Issue Body').first().json.has_commits ? ' I attached recent commits from that subsystem.' : '') + ' Want me to start a fix?'\n}) }}",
         "options": {}
       },
       "id": "respond-created",
       "name": "Respond: Issue Created",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1680, 420]
+      "position": [2120, 420]
     }
   ],
   "connections": {
@@ -246,7 +306,7 @@
         ],
         [
           {
-            "node": "GitHub: Get Open Issues",
+            "node": "GitHub: Get All Issues",
             "type": "main",
             "index": 0
           }
@@ -264,7 +324,7 @@
         ]
       ]
     },
-    "GitHub: Get Open Issues": {
+    "GitHub: Get All Issues": {
       "main": [
         [
           {
@@ -295,6 +355,28 @@
             "index": 0
           }
         ],
+        [
+          {
+            "node": "GitHub: Get Recent Commits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Recent Commits": {
+      "main": [
+        [
+          {
+            "node": "Format Commits & Assemble Issue Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Commits & Assemble Issue Body": {
+      "main": [
         [
           {
             "node": "GitHub: Create Issue",

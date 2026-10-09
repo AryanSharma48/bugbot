@@ -88,6 +88,16 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{ json: $('Process Result & Prepare Labels').first().json }];"
+      },
+      "id": "code-single-item-callback",
+      "name": "Ensure Single Item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1150, 300]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $('Process Result & Prepare Labels').first().json.issue_number }}/comments",
         "authentication": "genericCredentialType",
@@ -159,6 +169,17 @@
       ]
     },
     "GitHub: Update Issue Labels": {
+      "main": [
+        [
+          {
+            "node": "Ensure Single Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Single Item": {
       "main": [
         [
           {
