@@ -1,0 +1,66 @@
+{
+  "type": "webhook",
+  "name": "start_fix",
+  "description": "Starts the autonomous coding agent fix workflow for one issue. Call ONLY after user verbally confirms yes.",
+  "api_schema": {
+    "url": "https://scribble-scratch-class.ngrok-free.dev/webhook/bugbot/start-fix",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Start fix parameters",
+      "required": true,
+      "properties": [
+        {
+          "id": "issue_number",
+          "type": "integer",
+          "description": "The issue number to fix (e.g. 1)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": true,
+          "enum": null
+        },
+        {
+          "id": "confirmed",
+          "type": "boolean",
+          "description": "True only if user verbally confirmed yes to starting this fix",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": true,
+          "enum": null
+        }
+      ],
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [
+      {
+        "type": "value",
+        "name": "x-bugbot-secret",
+        "secret_id": "",
+        "value": "bugbot_secret_2026_smoothapi"
+      }
+    ],
+    "content_type": "application/json",
+    "auth_connection": null,
+    "mtls_auth_connection": null,
+    "response_filter": null
+  },
+  "response_timeout_secs": 15,
+  "follow_redirects": false,
+  "follow_redirects_allowed_domains": [],
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "assignments": [],
+  "interruption_mode": "allow",
+  "pre_tool_speech": "auto",
+  "tool_call_sound": null,
+  "tool_call_sound_behavior": "auto",
+  "execution_mode": "immediate",
+  "tool_error_handling_mode": "auto",
+  "response_mocks": []
+}

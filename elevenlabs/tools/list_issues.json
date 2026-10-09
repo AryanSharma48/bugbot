@@ -1,0 +1,66 @@
+{
+  "type": "webhook",
+  "name": "list_issues",
+  "description": "Lists open issues in aryanSharma48/smoothapi to read a concise spoken summary.",
+  "api_schema": {
+    "url": "https://scribble-scratch-class.ngrok-free.dev/webhook/bugbot/list-issues",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "List issues filter options",
+      "required": false,
+      "properties": [
+        {
+          "id": "status",
+          "type": "string",
+          "description": "Filter by status: open, wip, review, failed, or all",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": ["open", "wip", "review", "failed", "all"]
+        },
+        {
+          "id": "limit",
+          "type": "integer",
+          "description": "Maximum number of issues to return (default 5)",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": null
+        }
+      ],
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [
+      {
+        "type": "value",
+        "name": "x-bugbot-secret",
+        "secret_id": "",
+        "value": "bugbot_secret_2026_smoothapi"
+      }
+    ],
+    "content_type": "application/json",
+    "auth_connection": null,
+    "mtls_auth_connection": null,
+    "response_filter": null
+  },
+  "response_timeout_secs": 15,
+  "follow_redirects": false,
+  "follow_redirects_allowed_domains": [],
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "assignments": [],
+  "interruption_mode": "allow",
+  "pre_tool_speech": "auto",
+  "tool_call_sound": null,
+  "tool_call_sound_behavior": "auto",
+  "execution_mode": "immediate",
+  "tool_error_handling_mode": "auto",
+  "response_mocks": []
+}

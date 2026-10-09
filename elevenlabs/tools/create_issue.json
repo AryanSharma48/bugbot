@@ -1,0 +1,136 @@
+{
+  "type": "webhook",
+  "name": "create_issue",
+  "description": "Files a bug as a GitHub issue in aryanSharma48/smoothapi. Call ONLY after user confirmed yes to your read-back.",
+  "api_schema": {
+    "url": "https://scribble-scratch-class.ngrok-free.dev/webhook/bugbot/create-issue",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Bug report parameters",
+      "required": true,
+      "properties": [
+        {
+          "id": "title",
+          "type": "string",
+          "description": "Short issue title, under 12 words",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": true,
+          "enum": null
+        },
+        {
+          "id": "description",
+          "type": "string",
+          "description": "What went wrong and expected behavior",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": true,
+          "enum": null
+        },
+        {
+          "id": "steps_to_reproduce",
+          "type": "string",
+          "description": "Steps in order to reproduce the bug",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": null
+        },
+        {
+          "id": "environment",
+          "type": "string",
+          "description": "Runtime, Node/Python version or OS",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": null
+        },
+        {
+          "id": "severity_hint",
+          "type": "string",
+          "description": "Severity level: low, medium, high, or critical",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        {
+          "id": "component_hint",
+          "type": "string",
+          "description": "Target component: typescript, python, or docs",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": ["typescript", "python", "docs"]
+        },
+        {
+          "id": "confirmed",
+          "type": "boolean",
+          "description": "True only if user explicitly said yes to file the issue",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": true,
+          "enum": null
+        },
+        {
+          "id": "force_create",
+          "type": "boolean",
+          "description": "True to bypass duplicate suggestion and force creation",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": null
+        },
+        {
+          "id": "append_to",
+          "type": "integer",
+          "description": "Existing issue number to comment on instead of creating new",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": false,
+          "enum": null
+        }
+      ],
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [
+      {
+        "type": "value",
+        "name": "x-bugbot-secret",
+        "secret_id": "",
+        "value": "bugbot_secret_2026_smoothapi"
+      }
+    ],
+    "content_type": "application/json",
+    "auth_connection": null,
+    "mtls_auth_connection": null,
+    "response_filter": null
+  },
+  "response_timeout_secs": 15,
+  "follow_redirects": false,
+  "follow_redirects_allowed_domains": [],
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "assignments": [],
+  "interruption_mode": "allow",
+  "pre_tool_speech": "auto",
+  "tool_call_sound": null,
+  "tool_call_sound_behavior": "auto",
+  "execution_mode": "immediate",
+  "tool_error_handling_mode": "auto",
+  "response_mocks": []
+}
