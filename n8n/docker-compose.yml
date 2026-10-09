@@ -1,0 +1,43 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: bugbot-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_EDITOR_BASE_URL=http://localhost:5678/
+      - N8N_WEBHOOK_URL=${WEBHOOK_URL:-https://scribble-scratch-class.ngrok-free.dev/}
+      - WEBHOOK_URL=${WEBHOOK_URL:-https://scribble-scratch-class.ngrok-free.dev/}
+      - GENERIC_TIMEZONE=${TIMEZONE:-Asia/Kolkata}
+      - TZ=${TIMEZONE:-Asia/Kolkata}
+      - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # Optional ngrok container if you want ngrok managed alongside n8n
+  # To use: set NGROK_AUTHTOKEN and NGROK_DOMAIN in your .env
+  # and run: docker compose --profile tunnel up -d
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: bugbot-ngrok
+    restart: unless-stopped
+    profiles:
+      - tunnel
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command:
+      - "http"
+      - "--domain=${NGROK_DOMAIN}"
+      - "n8n:5678"
+    depends_on:
+      - n8n
+
+volumes:
+  n8n_data:
+    name: bugbot_n8n_data
