@@ -1,0 +1,103 @@
+{
+  "name": "BugBot - List Issues",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bugbot/list-issues",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-list-issues",
+      "name": "Webhook: list-issues",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [160, 300],
+      "webhookId": "bugbot-list-issues"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/aryanSharma48/smoothapi/issues?state=open&per_page=30",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {
+          "alwaysOutputData": true
+        }
+      },
+      "id": "github-get-issues",
+      "name": "GitHub: Get Open Issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Webhook: list-issues').first().json.body || {};\nconst limit = Math.min(req.limit || 5, 8);\n\nconst statusOf = (names) => {\n  if (names.includes('fix-failed')) return 'fix-failed';\n  if (names.includes('needs-review')) return 'needs-review';\n  if (names.includes('WIP')) return 'WIP';\n  return 'reported';\n};\n\nconst sevOf = (labels) => {\n  const found = labels.find(l => (l.name || '').startsWith('sev:'));\n  return found ? found.name.slice(4) : 'medium';\n};\n\nconst rawItems = $input.all().map(i => i.json).filter(i => i && i.number && !i.pull_request);\n\nlet issues = rawItems.map(i => {\n  const labelNames = (i.labels || []).map(l => l.name);\n  return {\n    number: i.number,\n    title: i.title,\n    severity: sevOf(i.labels || []),\n    status: statusOf(labelNames)\n  };\n});\n\nconst want = {\n  wip: 'WIP',\n  review: 'needs-review',\n  failed: 'fix-failed',\n  reported: 'reported'\n}[(req.status || '').toLowerCase()];\n\nif (want) {\n  issues = issues.filter(i => i.status === want);\n}\n\nissues = issues.slice(0, limit);\n\nconst say = {\n  reported: 'not started',\n  WIP: 'being fixed',\n  'needs-review': 'fix ready for review',\n  'fix-failed': 'last fix failed'\n};\n\nconst spoken = issues.length\n  ? `${issues.length} issue${issues.length > 1 ? 's' : ''}. ` + issues.map(i => `Issue ${i.number}, ${i.title}, ${i.severity} severity, ${say[i.status] || 'not started'}.`).join(' ')\n  : 'No matching open issues.';\n\nreturn [{\n  json: {\n    ok: true,\n    count: issues.length,\n    issues,\n    spoken\n  }\n}];"
+      },
+      "id": "code-format-issues",
+      "name": "Format Spoken Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-list",
+      "name": "Respond: Issue List",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [820, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: list-issues": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Get Open Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Open Issues": {
+      "main": [
+        [
+          {
+            "node": "Format Spoken Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Spoken Summary": {
+      "main": [
+        [
+          {
+            "node": "Respond: Issue List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

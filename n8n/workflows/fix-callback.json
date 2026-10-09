@@ -1,0 +1,175 @@
+{
+  "name": "BugBot - Fix Callback",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bugbot/fix-callback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-fix-callback",
+      "name": "Webhook: fix-callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [160, 300],
+      "webhookId": "bugbot-fix-callback"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": true\n}",
+        "options": {}
+      },
+      "id": "respond-immediate-ack",
+      "name": "Respond: Fast Ack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $('Webhook: fix-callback').first().json.body.issue_number }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "github-get-issue-callback",
+      "name": "GitHub: Get Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cb = $('Webhook: fix-callback').first().json.body || {};\nconst issue = $input.first().json;\nconst isSuccess = cb.status === 'success' && Boolean(cb.pr_url);\n\nconst existingLabels = (issue.labels || []).map(l => l.name);\nconst cleanedLabels = existingLabels.filter(x => !['WIP', 'reported', 'needs-review', 'fix-failed'].includes(x));\n\nconst newStatusLabel = isSuccess ? 'needs-review' : 'fix-failed';\nconst finalLabels = [...cleanedLabels, newStatusLabel];\n\nconst commentBody = isSuccess\n  ? `### Automated Fix Ready for Review\\n\\nPull Request: ${cb.pr_url}\\nWorkflow Run: ${cb.run_url}\\n\\nAll tests passed in the headless agent verification run. A human must review and merge.`\n  : `### Automated Fix Failed\\n\\nThe background coding agent could not produce passing tests.\\nWorkflow Logs: ${cb.run_url}\\n\\nSay \\\"fix issue ${issue.number}\\\" to retry.`;\n\nreturn [{\n  json: {\n    issue_number: issue.number,\n    labels: finalLabels,\n    commentBody,\n    isSuccess,\n    pr_url: cb.pr_url\n  }\n}];"
+      },
+      "id": "code-process-callback",
+      "name": "Process Result & Prepare Labels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $json.issue_number }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: $json.labels }) }}",
+        "options": {}
+      },
+      "id": "github-update-labels-callback",
+      "name": "GitHub: Update Issue Labels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $('Process Result & Prepare Labels').first().json.issue_number }}/comments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ body: $('Process Result & Prepare Labels').first().json.commentBody }) }}",
+        "options": {}
+      },
+      "id": "github-post-callback-comment",
+      "name": "GitHub: Post Result Comment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1260, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: fix-callback": {
+      "main": [
+        [
+          {
+            "node": "Respond: Fast Ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: Fast Ack": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Get Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Issue": {
+      "main": [
+        [
+          {
+            "node": "Process Result & Prepare Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Result & Prepare Labels": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Update Issue Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Update Issue Labels": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Post Result Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

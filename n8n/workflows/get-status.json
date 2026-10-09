@@ -1,0 +1,140 @@
+{
+  "name": "BugBot - Get Status",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bugbot/get-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-get-status",
+      "name": "Webhook: get-status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [160, 300],
+      "webhookId": "bugbot-get-status"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $('Webhook: get-status').first().json.body.issue_number }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {
+          "continueOnFail": true
+        }
+      },
+      "id": "github-get-issue-status",
+      "name": "GitHub: Get Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/pulls?state=open&per_page=30",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {
+          "continueOnFail": true,
+          "alwaysOutputData": true
+        }
+      },
+      "id": "github-get-pulls",
+      "name": "GitHub: Get Pull Requests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Webhook: get-status').first().json.body || {};\nconst issue = $('GitHub: Get Issue').first().json;\nconst n = req.issue_number;\n\nif (!issue || issue.message === 'Not Found') {\n  return [{\n    json: {\n      ok: false,\n      error: 'issue_not_found',\n      spoken: `I could not find issue ${n}.`\n    }\n  }];\n}\n\nconst labels = (issue.labels || []).map(l => l.name);\nconst status = labels.includes('fix-failed') ? 'fix-failed'\n  : labels.includes('needs-review') ? 'needs-review'\n  : labels.includes('WIP') ? 'WIP' : 'reported';\n\nconst allPulls = $input.all().map(p => p.json).filter(p => p && p.number);\nconst matchingPull = allPulls.find(p => (p.head && p.head.ref === `fix/issue-${n}`));\nconst pr_url = matchingPull ? matchingPull.html_url : null;\nconst pr_number = matchingPull ? matchingPull.number : null;\n\nlet spoken = '';\nif (status === 'reported') {\n  spoken = `Issue ${n} is filed but the fix has not started yet. Say fix issue ${n} to begin.`;\n} else if (status === 'WIP') {\n  spoken = `Issue ${n} is currently being fixed by the background coding agent.`;\n} else if (status === 'needs-review') {\n  spoken = pr_number\n    ? `Issue ${n} has a fix ready for review. Pull request number ${pr_number} is open.`\n    : `Issue ${n} has a fix ready for human review.`;\n} else if (status === 'fix-failed') {\n  spoken = `The last automated fix attempt for issue ${n} failed. Say fix issue ${n} to retry.`;\n}\n\nreturn [{\n  json: {\n    ok: true,\n    issue_number: n,\n    status,\n    pr_url,\n    pr_number,\n    spoken\n  }\n}];"
+      },
+      "id": "code-build-status-response",
+      "name": "Format Status & Spoken",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-status",
+      "name": "Respond: Issue Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1040, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: get-status": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Get Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Issue": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Get Pull Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Pull Requests": {
+      "main": [
+        [
+          {
+            "node": "Format Status & Spoken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Status & Spoken": {
+      "main": [
+        [
+          {
+            "node": "Respond: Issue Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}
