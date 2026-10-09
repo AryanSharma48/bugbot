@@ -1,0 +1,335 @@
+{
+  "name": "BugBot - Start Fix",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bugbot/start-fix",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-start-fix",
+      "name": "Webhook: start-fix",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [160, 300],
+      "webhookId": "bugbot-start-fix"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.body.confirmed }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-confirmed-fix",
+      "name": "Is Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": false,\n  \"error\": \"confirmation_required\",\n  \"spoken\": \"Say yes and I will start the fix.\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-unconfirmed-fix",
+      "name": "Respond: Confirmation Needed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [600, 480]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $('Webhook: start-fix').first().json.body.issue_number }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {
+          "continueOnFail": true
+        }
+      },
+      "id": "github-get-issue-for-fix",
+      "name": "GitHub: Get Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [600, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Webhook: start-fix').first().json.body || {};\nconst issue = $input.first().json;\nconst n = req.issue_number;\n\nif (!issue || issue.message === 'Not Found') {\n  return [{ json: { allowed: false, error: 'issue_not_found', spoken: `I cannot find issue ${n}.` } }];\n}\n\nif (issue.state === 'closed') {\n  return [{ json: { allowed: false, error: 'issue_closed', spoken: `Issue ${n} is already closed.` } }];\n}\n\nconst names = (issue.labels || []).map(l => l.name);\nif (names.includes('WIP')) {\n  return [{ json: { allowed: false, error: 'already_in_progress', spoken: `Issue ${n} already has a fix running.` } }];\n}\n\nconst labels = names.filter(x => !['reported', 'needs-review', 'fix-failed'].includes(x)).concat('WIP');\n\nreturn [{\n  json: {\n    allowed: true,\n    number: issue.number,\n    labels\n  }\n}];"
+      },
+      "id": "code-validate-fix",
+      "name": "Validate & Prepare WIP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [820, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.allowed }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-allowed-fix",
+      "name": "Is Fix Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1040, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  ok: false,\n  error: $json.error,\n  spoken: $json.spoken\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-fix-refused",
+      "name": "Respond: Fix Refused",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1260, 360]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $json.number }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: $json.labels }) }}",
+        "options": {}
+      },
+      "id": "github-put-wip-label",
+      "name": "GitHub: Update Labels to WIP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1260, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $('Validate & Prepare WIP').first().json }];"
+      },
+      "id": "code-reset-single-item",
+      "name": "Ensure Single Item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1370, 140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/aryanSharma48/smoothapi/issues/{{ $('Validate & Prepare WIP').first().json.number }}/comments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"body\": \"Voice-triggered fix started. A pull request will be opened for human review. Nothing is merged automatically.\"\n}",
+        "options": {}
+      },
+      "id": "github-post-fix-comment",
+      "name": "GitHub: Comment Fix Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1480, 140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/aryanSharma48/smoothapi/actions/workflows/bugbot-fix.yml/dispatches",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ref: 'main', inputs: { issue_number: String($('Validate & Prepare WIP').first().json.number) } }) }}",
+        "options": {
+          "continueOnFail": true
+        }
+      },
+      "id": "github-dispatch-workflow",
+      "name": "GitHub: Dispatch Actions Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1700, 140]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  ok: true,\n  issue_number: $('Validate & Prepare WIP').first().json.number,\n  status: 'WIP',\n  spoken: 'Fix started for issue ' + $('Validate & Prepare WIP').first().json.number + '. It usually takes a few minutes. Ask me for status any time.'\n}) }}",
+        "options": {}
+      },
+      "id": "respond-fix-started",
+      "name": "Respond: Fix Dispatched",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1920, 140]
+    }
+  ],
+  "connections": {
+    "Webhook: start-fix": {
+      "main": [
+        [
+          {
+            "node": "Is Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Get Issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Confirmation Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Issue": {
+      "main": [
+        [
+          {
+            "node": "Validate & Prepare WIP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Prepare WIP": {
+      "main": [
+        [
+          {
+            "node": "Is Fix Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Fix Allowed?": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Update Labels to WIP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Fix Refused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Update Labels to WIP": {
+      "main": [
+        [
+          {
+            "node": "Ensure Single Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Single Item": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Comment Fix Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Comment Fix Started": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Dispatch Actions Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Dispatch Actions Workflow": {
+      "main": [
+        [
+          {
+            "node": "Respond: Fix Dispatched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}
