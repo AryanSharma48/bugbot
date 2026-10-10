@@ -42,7 +42,7 @@ export function CallHero() {
               Talk directly to BugBot
             </h2>
             <p className="call-hero-desc">
-              Report bugs in plain English, query in-progress agent fixes, or dispatch autonomous coding swarms straight from your voice.
+              Report bugs in plain English, query in-progress agent fixes, or dispatch autonomous coding fixes straight from your voice.
             </p>
           </div>
 

@@ -50,7 +50,7 @@ export function IssueCard({ issue, onSelect }: IssueCardProps) {
       {isWip && (
         <div className="wip-tag" id={`wip-indicator-${issue.number}`}>
           <span className="wip-dot" />
-          <span>SWARM AGENT RUNNING</span>
+          <span>FIX IN PROGRESS</span>
         </div>
       )}
 
