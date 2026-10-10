@@ -466,11 +466,25 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  transition: border-color 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
 }
 
 .stat-card:hover {
   border-color: var(--border-strong);
+  background: var(--bg-surface-elevated);
+  transform: translateY(-1px);
+}
+
+.stat-card:active {
+  transform: translateY(0);
+}
+
+.column-focus-highlight {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+  transition: outline 0.2s ease;
 }
 
 .stat-card-header {

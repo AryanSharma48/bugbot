@@ -13,9 +13,27 @@ export function StatsRibbon({ issues }: StatsRibbonProps) {
   const reviewCount = issues.filter((i) => i.status === 'needs-review').length;
   const failedCount = issues.filter((i) => i.status === 'fix-failed').length;
 
+  const scrollToColumn = (key: string) => {
+    const el = document.getElementById(`column-${key}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'center' });
+      // Subtle pulse on targeted column
+      el.classList.add('column-focus-highlight');
+      setTimeout(() => el.classList.remove('column-focus-highlight'), 1200);
+    }
+  };
+
   return (
     <section className="stats-ribbon" aria-label="System Metrics">
-      <div className="stat-card" id="stat-reported">
+      <div
+        className="stat-card"
+        id="stat-reported"
+        role="button"
+        tabIndex={0}
+        onClick={() => scrollToColumn('reported')}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && scrollToColumn('reported')}
+        title="Jump to Reported column"
+      >
         <div className="stat-card-header">
           <span className="stat-index">01</span>
           <span className="stat-status-dot dot-cyan" />
@@ -24,7 +42,15 @@ export function StatsRibbon({ issues }: StatsRibbonProps) {
         <div className="stat-label">Pending Triage</div>
       </div>
 
-      <div className="stat-card" id="stat-wip">
+      <div
+        className="stat-card"
+        id="stat-wip"
+        role="button"
+        tabIndex={0}
+        onClick={() => scrollToColumn('WIP')}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && scrollToColumn('WIP')}
+        title="Jump to In Progress column"
+      >
         <div className="stat-card-header">
           <span className="stat-index">02</span>
           <span className="stat-status-dot dot-amber" />
@@ -33,7 +59,15 @@ export function StatsRibbon({ issues }: StatsRibbonProps) {
         <div className="stat-label">Agent In-Flight</div>
       </div>
 
-      <div className="stat-card" id="stat-review">
+      <div
+        className="stat-card"
+        id="stat-review"
+        role="button"
+        tabIndex={0}
+        onClick={() => scrollToColumn('needs-review')}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && scrollToColumn('needs-review')}
+        title="Jump to Needs Review column"
+      >
         <div className="stat-card-header">
           <span className="stat-index">03</span>
           <span className="stat-status-dot dot-emerald" />
@@ -42,7 +76,15 @@ export function StatsRibbon({ issues }: StatsRibbonProps) {
         <div className="stat-label">PRs Ready for Review</div>
       </div>
 
-      <div className="stat-card" id="stat-failed">
+      <div
+        className="stat-card"
+        id="stat-failed"
+        role="button"
+        tabIndex={0}
+        onClick={() => scrollToColumn('fix-failed')}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && scrollToColumn('fix-failed')}
+        title="Jump to Fix Failed column"
+      >
         <div className="stat-card-header">
           <span className="stat-index">04</span>
           <span className="stat-status-dot dot-rose" />
