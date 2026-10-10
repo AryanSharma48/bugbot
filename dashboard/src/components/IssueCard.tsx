@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { IssueItem } from '@/app/api/issues/route';
-import { GitPullRequest, ExternalLink, Clock, User } from 'lucide-react';
 
 interface IssueCardProps {
   issue: IssueItem;
@@ -49,14 +48,14 @@ export function IssueCard({ issue, onSelect }: IssueCardProps) {
       <h3 className="card-title">{issue.title}</h3>
 
       {isWip && (
-        <div className="wip-glow-strip" id={`wip-indicator-${issue.number}`}>
-          <div className="wip-spinner"></div>
-          <span>Aider agent running tests...</span>
+        <div className="wip-tag" id={`wip-indicator-${issue.number}`}>
+          <span className="wip-dot" />
+          <span>SWARM AGENT RUNNING</span>
         </div>
       )}
 
       {issue.pr && (
-        <div style={{ marginBottom: '0.65rem' }}>
+        <div className="card-pr-container">
           <a
             href={issue.pr}
             target="_blank"
@@ -64,11 +63,9 @@ export function IssueCard({ issue, onSelect }: IssueCardProps) {
             className="card-pr-link"
             id={`pr-link-${issue.number}`}
             onClick={(e) => e.stopPropagation()}
-            title="Open reviewable Pull Request on GitHub"
           >
-            <GitPullRequest size={13} />
-            <span>Review PR {issue.prNumber ? `#${issue.prNumber}` : ''}</span>
-            <ExternalLink size={11} />
+            <span>REVIEW PR {issue.prNumber ? `#${issue.prNumber}` : ''}</span>
+            <span className="arrow-ext">↗</span>
           </a>
         </div>
       )}
@@ -80,13 +77,9 @@ export function IssueCard({ issue, onSelect }: IssueCardProps) {
       )}
 
       <div className="card-footer">
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-          <User size={11} />
-          <span>{issue.author}</span>
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-          <Clock size={11} />
-          <span>{new Date(issue.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <span className="card-author">@{issue.author}</span>
+        <span className="card-time">
+          {new Date(issue.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
     </article>

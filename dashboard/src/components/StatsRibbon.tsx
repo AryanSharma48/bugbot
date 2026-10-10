@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { IssueItem } from '@/app/api/issues/route';
-import { Bug, PlayCircle, GitPullRequest, AlertTriangle } from 'lucide-react';
 
 interface StatsRibbonProps {
   issues: IssueItem[];
@@ -17,51 +16,39 @@ export function StatsRibbon({ issues }: StatsRibbonProps) {
   return (
     <section className="stats-ribbon" aria-label="System Metrics">
       <div className="stat-card" id="stat-reported">
-        <div>
-          <div className="stat-label">Pending Triage</div>
-          <div className="stat-val" style={{ color: 'var(--accent-cyan)' }}>
-            {reportedCount}
-          </div>
+        <div className="stat-card-header">
+          <span className="stat-index">01</span>
+          <span className="stat-status-dot dot-cyan" />
         </div>
-        <div style={{ color: 'var(--accent-cyan)', opacity: 0.8 }}>
-          <Bug size={26} />
-        </div>
+        <div className="stat-val">{reportedCount}</div>
+        <div className="stat-label">Pending Triage</div>
       </div>
 
       <div className="stat-card" id="stat-wip">
-        <div>
-          <div className="stat-label">Agent In-Flight</div>
-          <div className="stat-val" style={{ color: 'var(--accent-amber)' }}>
-            {wipCount}
-          </div>
+        <div className="stat-card-header">
+          <span className="stat-index">02</span>
+          <span className="stat-status-dot dot-amber" />
         </div>
-        <div style={{ color: 'var(--accent-amber)', opacity: 0.8 }}>
-          <PlayCircle size={26} />
-        </div>
+        <div className="stat-val">{wipCount}</div>
+        <div className="stat-label">Agent In-Flight</div>
       </div>
 
       <div className="stat-card" id="stat-review">
-        <div>
-          <div className="stat-label">PRs Ready for Human</div>
-          <div className="stat-val" style={{ color: 'var(--accent-emerald)' }}>
-            {reviewCount}
-          </div>
+        <div className="stat-card-header">
+          <span className="stat-index">03</span>
+          <span className="stat-status-dot dot-emerald" />
         </div>
-        <div style={{ color: 'var(--accent-emerald)', opacity: 0.8 }}>
-          <GitPullRequest size={26} />
-        </div>
+        <div className="stat-val">{reviewCount}</div>
+        <div className="stat-label">PRs Ready for Review</div>
       </div>
 
       <div className="stat-card" id="stat-failed">
-        <div>
-          <div className="stat-label">Fix Retries Needed</div>
-          <div className="stat-val" style={{ color: 'var(--accent-rose)' }}>
-            {failedCount}
-          </div>
+        <div className="stat-card-header">
+          <span className="stat-index">04</span>
+          <span className="stat-status-dot dot-rose" />
         </div>
-        <div style={{ color: 'var(--accent-rose)', opacity: 0.8 }}>
-          <AlertTriangle size={26} />
-        </div>
+        <div className="stat-val">{failedCount}</div>
+        <div className="stat-label">Fix Retries Needed</div>
       </div>
     </section>
   );

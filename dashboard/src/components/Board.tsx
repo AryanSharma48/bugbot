@@ -3,7 +3,6 @@
 import React from 'react';
 import { IssueItem } from '@/app/api/issues/route';
 import { IssueCard } from './IssueCard';
-import { Inbox, Cpu, CheckCircle2, AlertOctagon } from 'lucide-react';
 
 interface BoardProps {
   issues: IssueItem[];
@@ -15,8 +14,7 @@ interface BoardProps {
 interface ColumnDef {
   key: IssueItem['status'];
   title: string;
-  color: string;
-  icon: React.ReactNode;
+  dotClass: string;
   emptyHint: string;
 }
 
@@ -24,35 +22,30 @@ const COLUMNS: ColumnDef[] = [
   {
     key: 'reported',
     title: 'Reported',
-    color: 'var(--accent-cyan)',
-    icon: <Inbox size={16} />,
-    emptyHint: 'No new voice reports waiting for fix',
+    dotClass: 'dot-cyan',
+    emptyHint: 'No issues pending triage',
   },
   {
     key: 'WIP',
     title: 'In Progress',
-    color: 'var(--accent-amber)',
-    icon: <Cpu size={16} />,
-    emptyHint: 'No background coding agent runs active',
+    dotClass: 'dot-amber',
+    emptyHint: 'No active agent jobs',
   },
   {
     key: 'needs-review',
     title: 'Needs Review',
-    color: 'var(--accent-emerald)',
-    icon: <CheckCircle2 size={16} />,
+    dotClass: 'dot-emerald',
     emptyHint: 'No pull requests pending approval',
   },
   {
     key: 'fix-failed',
     title: 'Fix Failed',
-    color: 'var(--accent-rose)',
-    icon: <AlertOctagon size={16} />,
-    emptyHint: 'Zero failed fix attempts',
+    dotClass: 'dot-rose',
+    emptyHint: 'Zero failed fixes',
   },
 ];
 
 export function Board({ issues, searchQuery, selectedSeverity, onSelectIssue }: BoardProps) {
-  // Filter issues
   const filteredIssues = issues.filter((item) => {
     const matchesSearch =
       !searchQuery ||
@@ -75,10 +68,7 @@ export function Board({ issues, searchQuery, selectedSeverity, onSelectIssue }: 
           <section className="column-wrapper" key={col.key} id={`column-${col.key}`}>
             <div className="column-header">
               <div className="col-title-group">
-                <span className="col-indicator-bar" style={{ backgroundColor: col.color }} />
-                <span style={{ color: col.color, display: 'flex', alignItems: 'center' }}>
-                  {col.icon}
-                </span>
+                <span className={`status-dot ${col.dotClass}`} />
                 <h2>{col.title}</h2>
               </div>
               <span className="col-count-pill" id={`count-${col.key}`}>
