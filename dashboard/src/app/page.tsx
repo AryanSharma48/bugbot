@@ -55,8 +55,8 @@ export default function DashboardPage() {
 
       {/* 3. Dashboard Container Beneath Call CTA */}
       <div className="dashboard-content-flow">
-        {/* Metric Cards Ribbon */}
-        <StatsRibbon issues={issues} />
+        {/* Metric Cards Ribbon (matches displayed board issues) */}
+        <StatsRibbon issues={displayedIssues} />
 
         {/* Search & Filter Bar */}
         <section className="filter-bar" aria-label="Board Filters">

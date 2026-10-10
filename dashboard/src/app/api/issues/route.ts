@@ -120,20 +120,19 @@ export async function GET() {
 
         const prData = prByIssue[String(i.number)];
 
-        let status: IssueItem['status'] = names.includes('fix-failed')
-          ? 'fix-failed'
-          : names.includes('needs-review')
-          ? 'needs-review'
-          : names.includes('WIP')
-          ? 'WIP'
-          : 'reported';
-
         const sevLabel = names.find((n) => n.startsWith('sev:'));
         const compLabel = names.find((n) => n.startsWith('comp:'));
 
-        // If a PR is already open on GitHub for this issue, it is ready for human review
-        if (prData && status !== 'fix-failed') {
+        let status: IssueItem['status'] = 'reported';
+        if (names.includes('fix-failed')) {
+          status = 'fix-failed';
+        } else if (prData) {
+          // Only mark as needs-review if an active PR actually exists for this issue
           status = 'needs-review';
+        } else if (names.includes('WIP')) {
+          status = 'WIP';
+        } else {
+          status = 'reported';
         }
 
         return {
